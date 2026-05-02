@@ -1,0 +1,9 @@
+node_modules/
+.sixth/
+.env
+.env.*
+dist/
+build/
+coverage/
+*.log
+.DS_Store

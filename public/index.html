@@ -1,0 +1,1329 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Мини-сервис-деск</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f4f6fb;color:#1e2330;display:flex;min-height:100vh}
+a{text-decoration:none;color:inherit}
+
+/* Боковая панель */
+#sidebar{width:220px;background:#1e2330;color:#fff;display:flex;flex-direction:column;padding:0;flex-shrink:0;position:fixed;height:100vh;z-index:100}
+.sidebar-logo{padding:20px 20px 16px;font-size:16px;font-weight:700;border-bottom:1px solid #2d3347;display:flex;align-items:center;gap:8px}
+.sidebar-logo span{font-size:20px}
+.nav-section{padding:14px 12px 4px;font-size:10px;font-weight:600;color:#5a6380;letter-spacing:.08em;text-transform:uppercase}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;border-radius:6px;margin:1px 8px;font-size:13.5px;color:#9aa3b8;transition:all .15s}
+.nav-item:hover{background:#2d3347;color:#fff}
+.nav-item.active{background:#3b6ef5;color:#fff}
+.nav-item .ico{font-size:16px;width:20px;text-align:center}
+
+/* Основная область */
+#main{margin-left:220px;flex:1;display:flex;flex-direction:column;min-height:100vh}
+.topbar{background:#fff;border-bottom:1px solid #e5e9f0;padding:0 28px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+.topbar h1{font-size:16px;font-weight:600;color:#1e2330}
+.topbar-actions{display:flex;align-items:center;gap:10px}
+#page{padding:24px 28px;flex:1}
+
+/* Кнопки */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:7px;font-size:13px;font-weight:500;cursor:pointer;border:none;transition:all .15s}
+.btn-primary{background:#3b6ef5;color:#fff}.btn-primary:hover{background:#2d5ce0}
+.btn-danger{background:#fee2e2;color:#dc2626}.btn-danger:hover{background:#fecaca}
+.btn-secondary{background:#f1f3f9;color:#4b5563;border:1px solid #e5e9f0}.btn-secondary:hover{background:#e5e9f0}
+.btn-sm{padding:5px 11px;font-size:12px}
+
+/* Карточки */
+.card{background:#fff;border-radius:10px;border:1px solid #e5e9f0;padding:20px}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.card-title{font-size:14px;font-weight:600;color:#1e2330}
+.card-subtitle{font-size:12px;color:#9ca3af;margin-top:4px}
+
+/* Сетка статистики */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:20px}
+.stat-card{background:#fff;border-radius:10px;border:1px solid #e5e9f0;padding:18px 20px}
+.stat-label{font-size:12px;color:#6b7280;margin-bottom:4px}
+.stat-value{font-size:28px;font-weight:700;color:#1e2330}
+.stat-sub{font-size:11px;color:#9ca3af;margin-top:2px}
+.stat-card.danger .stat-value{color:#dc2626}
+.stat-card.warning .stat-value{color:#d97706}
+.stat-card.success .stat-value{color:#059669}
+
+/* Инфо-панель */
+.info-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:20px}
+.info-card{background:#fff;border:1px solid #e5e9f0;border-radius:10px;padding:16px 18px}
+.info-card .label{font-size:12px;color:#6b7280;margin-bottom:6px}
+.info-card .value{font-size:22px;font-weight:700;color:#1e2330}
+.info-card .hint{font-size:11px;color:#9ca3af;margin-top:4px}
+
+.export-actions{display:flex;flex-wrap:wrap;gap:10px}
+.export-actions .btn{white-space:nowrap}
+.admin-report-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:20px}
+
+/* Графики */
+.charts-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:20px}
+
+/* Таблица */
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th{background:#f8fafc;padding:10px 14px;text-align:left;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #e5e9f0}
+tbody tr{border-bottom:1px solid #f1f3f9;cursor:pointer;transition:background .1s}
+tbody tr:hover{background:#f8faff}
+td{padding:11px 14px;vertical-align:middle}
+
+/* Бейджи */
+.badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600}
+.badge-new{background:#dbeafe;color:#1d4ed8}
+.badge-in_progress{background:#fef3c7;color:#92400e}
+.badge-waiting{background:#e0e7ff;color:#3730a3}
+.badge-resolved{background:#d1fae5;color:#065f46}
+.badge-closed{background:#f3f4f6;color:#6b7280}
+.badge-critical{background:#fee2e2;color:#dc2626}
+.badge-high{background:#ffedd5;color:#c2410c}
+.badge-medium{background:#fef9c3;color:#a16207}
+.badge-low{background:#f0fdf4;color:#166534}
+.sla-ok{color:#059669;font-size:12px}
+.sla-warn{color:#d97706;font-size:12px}
+.sla-breach{color:#dc2626;font-size:12px;font-weight:600}
+
+/* Фильтры */
+.filters{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.filters select,.filters input{padding:7px 12px;border:1px solid #e5e9f0;border-radius:7px;font-size:13px;background:#fff;color:#1e2330;outline:none}
+.filters input{flex:1;min-width:180px}
+.filters select:focus,.filters input:focus{border-color:#3b6ef5}
+.ticket-summary{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px;padding:12px 14px;background:#fff;border:1px solid #e5e9f0;border-radius:10px}
+.ticket-summary .summary-text{font-size:13px;color:#4b5563}
+.ticket-summary .summary-pills{display:flex;gap:8px;flex-wrap:wrap}
+.summary-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:#f8fafc;border:1px solid #e5e9f0;font-size:12px;color:#4b5563}
+
+/* Модальное окно */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal{background:#fff;border-radius:12px;width:100%;max-width:560px;max-height:90vh;overflow-y:auto}
+.modal-header{padding:20px 24px 0;display:flex;justify-content:space-between;align-items:center}
+.modal-header h2{font-size:16px;font-weight:600}
+.modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:#6b7280;line-height:1}
+.modal-body{padding:20px 24px}
+.modal-footer{padding:0 24px 20px;display:flex;justify-content:flex-end;gap:10px}
+
+/* Формы */
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:12px;font-weight:600;color:#4b5563;margin-bottom:5px}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:9px 12px;border:1px solid #e5e9f0;border-radius:7px;font-size:13px;font-family:inherit;outline:none;color:#1e2330}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:#3b6ef5;box-shadow:0 0 0 3px rgba(59,110,245,.08)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* Детали заявки */
+.ticket-detail{display:grid;grid-template-columns:1fr 280px;gap:16px}
+.detail-meta{display:flex;flex-direction:column;gap:10px}
+.meta-row{display:flex;justify-content:space-between;font-size:13px;border-bottom:1px solid #f1f3f9;padding-bottom:8px}
+.meta-row:last-child{border:none}
+.meta-key{color:#6b7280;font-weight:500}
+.comments{margin-top:16px}
+.comment{padding:12px;border:1px solid #f1f3f9;border-radius:8px;margin-bottom:8px}
+.comment.internal{background:#fefbf0;border-color:#fde68a}
+.comment-meta{font-size:11px;color:#9ca3af;margin-bottom:4px}
+.comment-body{font-size:13px;line-height:1.5}
+.comment-add{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.comment-add textarea{padding:9px 12px;border:1px solid #e5e9f0;border-radius:7px;font-size:13px;font-family:inherit;resize:vertical;min-height:70px;outline:none}
+.comment-add textarea:focus{border-color:#3b6ef5}
+
+/* Пустое состояние */
+.empty{text-align:center;padding:40px;color:#9ca3af}
+.empty .ico{font-size:36px;margin-bottom:8px}
+
+/* Уведомление */
+#toast{position:fixed;bottom:24px;right:24px;background:#1e2330;color:#fff;padding:12px 20px;border-radius:8px;font-size:13px;z-index:9999;opacity:0;transform:translateY(10px);transition:all .25s;pointer-events:none}
+#toast.show{opacity:1;transform:translateY(0)}
+
+@media(max-width:768px){
+  #sidebar{display:none}
+  #main{margin-left:0}
+  .charts-grid{grid-template-columns:1fr}
+  .ticket-detail{grid-template-columns:1fr}
+  .form-row{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- Боковая панель -->
+<nav id="sidebar">
+  <div class="sidebar-logo"><span>🎯</span> Сервис-деск</div>
+  <div class="nav-section">Меню</div>
+  <div class="nav-item active" data-page="dashboard" onclick="nav('dashboard', this)"><span class="ico">📊</span> Панель</div>
+  <div class="nav-item" data-page="tickets" onclick="nav('tickets', this)"><span class="ico">📋</span> Заявки</div>
+  <div class="nav-item" data-page="clients" onclick="nav('clients', this)"><span class="ico">🏢</span> Клиенты</div>
+  <div class="nav-item" data-page="agents" onclick="nav('agents', this)"><span class="ico">👤</span> Агенты</div>
+  <div class="nav-item" data-page="admin" onclick="nav('admin', this)"><span class="ico">🛡️</span> Администрирование</div>
+  <div class="nav-section">Быстрые действия</div>
+  <div class="nav-item" onclick="openCreateTicket()"><span class="ico">➕</span> Новая заявка</div>
+  <div class="nav-item" onclick="openCreateClient()"><span class="ico">🏢</span> Новый клиент</div>
+  <div class="nav-item" onclick="openCreateAgent()"><span class="ico">👤</span> Новый агент</div>
+</nav>
+
+<!-- Основная область -->
+<div id="main">
+  <div class="topbar">
+    <h1 id="page-title">Панель</h1>
+    <div class="topbar-actions">
+      <button class="btn btn-secondary" onclick="refreshCurrentPage()">⟳ Обновить</button>
+      <button class="btn btn-primary" onclick="openCreateTicket()">+ Новая заявка</button>
+    </div>
+  </div>
+  <div id="page"></div>
+</div>
+
+<!-- Уведомление -->
+<div id="toast"></div>
+
+<script>
+const API = '/api';
+let currentPage = 'dashboard';
+let allClients = [];
+let allUsers = [];
+let ticketMeta = { categories: [] };
+let charts = {};
+let adminCache = null;
+
+const STATUS_RU = {new:'Новая',in_progress:'В работе',waiting:'Ожидание',resolved:'Решена',closed:'Закрыта'};
+const PRIORITY_RU = {critical:'Критический',high:'Высокий',medium:'Средний',low:'Низкий'};
+const TYPE_RU = {enterprise:'Корпоративный',smb:'СМБ',starter:'Стартовый'};
+const ROLE_RU = {admin:'Админ',manager:'Менеджер',agent:'Агент'};
+
+function nav(page, el) {
+  currentPage = page;
+  document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+  if (el) el.classList.add('active');
+  const titles = {dashboard:'Панель',tickets:'Заявки',clients:'Клиенты',agents:'Агенты',admin:'Администрирование'};
+  document.getElementById('page-title').textContent = titles[page] || 'Панель';
+  if (page === 'dashboard') renderDashboard();
+  else if (page === 'tickets') renderTickets();
+  else if (page === 'clients') renderClients();
+  else if (page === 'agents') renderAgents();
+  else if (page === 'admin') renderAdmin();
+}
+
+async function get(url) {
+  const response = await fetch(API + url);
+  return response.json();
+}
+
+async function post(url, data) {
+  const response = await fetch(API + url, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(data)
+  });
+  return response.json();
+}
+
+async function put(url, data) {
+  const response = await fetch(API + url, {
+    method:'PUT',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(data)
+  });
+  return response.json();
+}
+
+async function del(url) {
+  const response = await fetch(API + url, {method:'DELETE'});
+  return response.json();
+}
+
+function toast(msg, ok=true) {
+  const t = document.getElementById('toast');
+  t.textContent = (ok ? '✅ ' : '❌ ') + msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+function downloadTextFile(filename, content, mimeType = 'text/plain;charset=utf-8') {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function fileStamp() {
+  return new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+}
+
+function formatDateTime(value) {
+  return new Date(value).toLocaleString('ru-RU');
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&')
+    .replace(/</g, '<')
+    .replace(/>/g, '>')
+    .replace(/"/g, '"')
+    .replace(/'/g, '');
+}
+
+function safeSheetName(name) {
+  return String(name).replace(/[\\/?*\[\]:]/g, ' ').slice(0, 31);
+}
+
+function csvEscape(value) {
+  const text = value === null || value === undefined ? '' : String(value);
+  return `"${text.replace(/"/g, '""').replace(/\r?\n/g, ' ')}"`;
+}
+
+function objectsToCsv(rows, columns) {
+  const header = columns.map(column => csvEscape(column.label || column.key)).join(',');
+  const body = rows.map(row => columns.map(column => csvEscape(typeof column.value === 'function' ? column.value(row) : row[column.key])).join(',')).join('\n');
+  return [header, body].filter(Boolean).join('\n');
+}
+
+function buildSummaryWorkbook(stats, tickets, clients, users) {
+  const workbook = XLSX.utils.book_new();
+  const totals = stats.totals || {};
+  const activity = stats.activity || {};
+  const commentActivity = stats.commentActivity || {};
+  const agentActivity = stats.agentActivity || {};
+
+  const appendSheet = (name, rows) => {
+    const sheet = XLSX.utils.json_to_sheet(rows.length ? rows : [{ 'Нет данных': '—' }]);
+    XLSX.utils.book_append_sheet(workbook, sheet, safeSheetName(name));
+  };
+
+  appendSheet('Сводка', [
+    { Раздел: 'Основные показатели', Показатель: 'Всего заявок', Значение: totals.total ?? 0 },
+    { Раздел: 'Основные показатели', Показатель: 'Открытые', Значение: totals.open_count ?? 0 },
+    { Раздел: 'Основные показатели', Показатель: 'Новые', Значение: totals.new_count ?? 0 },
+    { Раздел: 'Основные показатели', Показатель: 'В работе', Значение: totals.in_progress_count ?? 0 },
+    { Раздел: 'Основные показатели', Показатель: 'Ожидание', Значение: totals.waiting_count ?? 0 },
+    { Раздел: 'Основные показатели', Показатель: 'Решены / закрыты', Значение: totals.done_count ?? 0 },
+    { Раздел: 'Основные показатели', Показатель: 'Критические открытые', Значение: totals.critical_open ?? 0 },
+    { Раздел: 'Основные показатели', Показатель: 'Нарушений SLA', Значение: totals.slaBreached ?? 0 },
+    { Раздел: 'Основные показатели', Показатель: 'Среднее время решения (ч)', Значение: totals.avg_resolution_h ?? '—' },
+    { Раздел: 'Основные показатели', Показатель: 'Средний возраст открытых (ч)', Значение: totals.avg_open_age_h ?? '—' },
+    { Раздел: 'Активность', Показатель: 'Заявок за 7 дней', Значение: activity.tickets_7d ?? 0 },
+    { Раздел: 'Активность', Показатель: 'Заявок за 24 часа', Значение: activity.tickets_24h ?? 0 },
+    { Раздел: 'Комментарии', Показатель: 'Комментариев всего', Значение: commentActivity.comments_total ?? 0 },
+    { Раздел: 'Комментарии', Показатель: 'Комментариев за 7 дней', Значение: commentActivity.comments_7d ?? 0 },
+    { Раздел: 'Агенты', Показатель: 'Активные агенты', Значение: agentActivity.active_agents ?? 0 }
+  ]);
+
+  appendSheet('Заявки', tickets.map(ticket => ({
+    ID: ticket.id,
+    Тема: ticket.title,
+    Статус: STATUS_RU[ticket.status] || ticket.status,
+    Приоритет: PRIORITY_RU[ticket.priority] || ticket.priority,
+    Категория: ticket.category || 'Без категории',
+    Клиент: ticket.client_name || '—',
+    Агент: ticket.agent_name || '—',
+    'Возраст (ч)': ticket.age_hours,
+    'SLA (ч)': ticket.sla_hours,
+    'SLA нарушен': Number(ticket.sla_breached) === 1 ? 'Да' : 'Нет',
+    'Создано': formatDateTime(ticket.created_at)
+  })));
+
+  appendSheet('Клиенты', clients.map(client => ({
+    Название: client.name,
+    Email: client.email || '—',
+    Телефон: client.phone || '—',
+    Тип: TYPE_RU[client.company_type] || client.company_type,
+    'SLA (ч)': client.sla_hours,
+    'Заявок': client.ticket_count
+  })));
+
+  appendSheet('Агенты', users.map(user => ({
+    Имя: user.name,
+    Email: user.email,
+    Роль: ROLE_RU[user.role] || user.role,
+    'Активных заявок': user.active_tickets
+  })));
+
+  return workbook;
+}
+
+function buildPdfReportNode(stats, tickets, clients, users) {
+  const totals = stats.totals || {};
+  const activity = stats.activity || {};
+  const commentActivity = stats.commentActivity || {};
+  const agentActivity = stats.agentActivity || {};
+
+  const metricCards = [
+    ['Всего заявок', totals.total ?? 0],
+    ['Открытые', totals.open_count ?? 0],
+    ['Новые', totals.new_count ?? 0],
+    ['В работе', totals.in_progress_count ?? 0],
+    ['Решены / закрыты', totals.done_count ?? 0],
+    ['Нарушений SLA', totals.slaBreached ?? 0]
+  ].map(([label, value]) => `<div style="border:1px solid #e5e9f0;border-radius:10px;padding:12px 14px;background:#f8fafc"><div style="font-size:11px;color:#6b7280">${escapeHtml(label)}</div><div style="font-size:24px;font-weight:700;color:#1e2330">${escapeHtml(value)}</div></div>`).join('');
+
+  const renderRows = rows => rows.length
+    ? rows.map(row => `<tr><td style="padding:8px 10px;border-bottom:1px solid #eef2f7">${escapeHtml(row[0])}</td><td style="padding:8px 10px;border-bottom:1px solid #eef2f7;text-align:right">${escapeHtml(row[1])}</td></tr>`).join('')
+    : `<tr><td colspan="2" style="padding:10px;color:#9ca3af">Нет данных</td></tr>`;
+
+  const sections = [
+    {
+      title: 'Основные показатели',
+      rows: [
+        ['Всего заявок', totals.total ?? 0],
+        ['Открытые', totals.open_count ?? 0],
+        ['Новые', totals.new_count ?? 0],
+        ['В работе', totals.in_progress_count ?? 0],
+        ['Ожидание', totals.waiting_count ?? 0],
+        ['Решены / закрыты', totals.done_count ?? 0],
+        ['Критические открытые', totals.critical_open ?? 0],
+        ['Нарушений SLA', totals.slaBreached ?? 0],
+        ['Среднее время решения (ч)', totals.avg_resolution_h ?? '—'],
+        ['Средний возраст открытых (ч)', totals.avg_open_age_h ?? '—']
+      ]
+    },
+    {
+      title: 'Активность',
+      rows: [
+        ['Заявок за 7 дней', activity.tickets_7d ?? 0],
+        ['Заявок за 24 часа', activity.tickets_24h ?? 0],
+        ['Комментариев всего', commentActivity.comments_total ?? 0],
+        ['Комментариев за 7 дней', commentActivity.comments_7d ?? 0],
+        ['Внутренних комментариев', commentActivity.internal_comments ?? 0],
+        ['Публичных комментариев', commentActivity.public_comments ?? 0],
+        ['Активные агенты', agentActivity.active_agents ?? 0]
+      ]
+    }
+  ];
+
+  const createListSection = (title, rows) => `
+    <div style="margin-top:16px">
+      <div style="font-size:15px;font-weight:700;margin-bottom:8px;color:#1e2330">${escapeHtml(title)}</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;border:1px solid #e5e9f0;border-radius:10px;overflow:hidden">
+        <tbody>${renderRows(rows)}</tbody>
+      </table>
+    </div>`;
+
+  const node = document.createElement('div');
+  node.style.position = 'fixed';
+  node.style.left = '-10000px';
+  node.style.top = '0';
+  node.style.width = '800px';
+  node.style.background = '#fff';
+  node.style.color = '#1e2330';
+  node.style.padding = '24px';
+  node.style.fontFamily = 'Arial, Helvetica, sans-serif';
+  node.style.fontSize = '13px';
+  node.innerHTML = `
+    <div style="display:flex;justify-content:space-between;gap:16px;align-items:flex-start">
+      <div>
+        <div style="font-size:22px;font-weight:700;margin-bottom:4px">Сводка отчетности</div>
+        <div style="color:#6b7280">Мини-сервис-деск</div>
+      </div>
+      <div style="text-align:right;color:#6b7280;font-size:12px">
+        <div>Сформировано: ${escapeHtml(formatDateTime(new Date()))}</div>
+        <div>Заявок: ${tickets.length} · Клиентов: ${clients.length} · Агентов: ${users.length}</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:18px">${metricCards}</div>
+    ${sections.map(section => createListSection(section.title, section.rows)).join('')}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px">
+      <div>
+        <div style="font-size:15px;font-weight:700;margin-bottom:8px;color:#1e2330">Топ клиентов</div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;border:1px solid #e5e9f0;border-radius:10px;overflow:hidden">
+          <tbody>${renderRows((stats.byClient || []).slice(0, 8).map(row => [row.label, row.value]))}</tbody>
+        </table>
+      </div>
+      <div>
+        <div style="font-size:15px;font-weight:700;margin-bottom:8px;color:#1e2330">Топ категорий</div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;border:1px solid #e5e9f0;border-radius:10px;overflow:hidden">
+          <tbody>${renderRows((stats.byCategory || []).slice(0, 8).map(row => [row.label, row.value]))}</tbody>
+        </table>
+      </div>
+    </div>
+    <div style="margin-top:16px">
+      <div style="font-size:15px;font-weight:700;margin-bottom:8px;color:#1e2330">Топ агентов</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;border:1px solid #e5e9f0;border-radius:10px;overflow:hidden">
+        <tbody>${renderRows((stats.byAgent || []).slice(0, 8).map(row => [row.label, row.value]))}</tbody>
+      </table>
+    </div>
+  `;
+
+  return node;
+}
+
+async function exportSummaryPdf(stats, tickets, clients, users, stamp) {
+  if (!window.html2pdf) {
+    toast('PDF-модуль не загрузился', false);
+    return;
+  }
+
+  const node = buildPdfReportNode(stats, tickets, clients, users);
+  document.body.appendChild(node);
+
+  try {
+    await window.html2pdf().set({
+      margin: 10,
+      filename: `otchet-svodka-${stamp}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'p' }
+    }).from(node).save();
+    toast('Сводка PDF выгружена');
+  } finally {
+    node.remove();
+  }
+}
+
+async function loadAdminData(force = false) {
+  if (!force && adminCache) return adminCache;
+  const [stats, tickets, clients, users] = await Promise.all([
+    get('/stats'),
+    get('/tickets'),
+    get('/clients'),
+    get('/users')
+  ]);
+  adminCache = { stats, tickets, clients, users };
+  return adminCache;
+}
+
+function statusBadge(status) {
+  return `<span class="badge badge-${status}">${STATUS_RU[status] || status}</span>`;
+}
+
+function priorityBadge(priority) {
+  return `<span class="badge badge-${priority}">${PRIORITY_RU[priority] || priority}</span>`;
+}
+
+function timeAgo(dt) {
+  const d = Math.floor((Date.now() - new Date(dt)) / 60000);
+  if (d < 60) return `${d} мин назад`;
+  if (d < 1440) return `${Math.floor(d / 60)} ч назад`;
+  return `${Math.floor(d / 1440)} д назад`;
+}
+
+function slaLabel(age, sla, status) {
+  if (['resolved','closed'].includes(status)) return '<span style="color:#9ca3af;font-size:12px">✓ Закрыта</span>';
+  const pct = age / sla;
+  if (pct >= 1) return `<span class="sla-breach">⚠ ${age}ч / ${sla}ч</span>`;
+  if (pct >= .8) return `<span class="sla-warn">⏱ ${age}ч / ${sla}ч</span>`;
+  return `<span class="sla-ok">✓ ${age}ч / ${sla}ч</span>`;
+}
+
+function destroyCharts() {
+  Object.values(charts).forEach(chart => chart.destroy());
+  charts = {};
+}
+
+function refreshCurrentPage() {
+  if (currentPage === 'dashboard') renderDashboard();
+  else if (currentPage === 'tickets') renderTickets();
+  else if (currentPage === 'clients') renderClients();
+  else if (currentPage === 'agents') renderAgents();
+  else if (currentPage === 'admin') renderAdmin();
+}
+
+function renderMetricCards(metrics) {
+  return `
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-label">Всего заявок</div><div class="stat-value">${metrics.total}</div></div>
+      <div class="stat-card"><div class="stat-label">Открытые</div><div class="stat-value">${metrics.open_count}</div></div>
+      <div class="stat-card"><div class="stat-label">Новые</div><div class="stat-value" style="color:#1d4ed8">${metrics.new_count}</div></div>
+      <div class="stat-card warning"><div class="stat-label">В работе</div><div class="stat-value">${metrics.in_progress_count}</div></div>
+      <div class="stat-card"><div class="stat-label">Ожидание</div><div class="stat-value" style="color:#7c3aed">${metrics.waiting_count}</div></div>
+      <div class="stat-card success"><div class="stat-label">Решены / закрыты</div><div class="stat-value">${metrics.done_count}</div></div>
+      <div class="stat-card danger"><div class="stat-label">Критические открытые</div><div class="stat-value">${metrics.critical_open}</div></div>
+      <div class="stat-card ${metrics.slaBreached > 0 ? 'danger' : ''}"><div class="stat-label">Нарушений SLA</div><div class="stat-value">${metrics.slaBreached}</div></div>
+      <div class="stat-card"><div class="stat-label">Среднее время решения</div><div class="stat-value" style="font-size:20px">${metrics.avg_resolution_h ?? '—'}</div><div class="stat-sub">часов</div></div>
+      <div class="stat-card"><div class="stat-label">Средний возраст открытых</div><div class="stat-value" style="font-size:20px">${metrics.avg_open_age_h ?? '—'}</div><div class="stat-sub">часов</div></div>
+    </div>
+  `;
+}
+
+function renderInfoCards(activity, commentActivity, agentActivity) {
+  return `
+    <div class="info-grid">
+      <div class="info-card">
+        <div class="label">Заявок за 7 дней</div>
+        <div class="value">${activity.tickets_7d ?? 0}</div>
+        <div class="hint">Новые обращения за неделю</div>
+      </div>
+      <div class="info-card">
+        <div class="label">За последние 24 часа</div>
+        <div class="value">${activity.tickets_24h ?? 0}</div>
+        <div class="hint">Свежие заявки за сутки</div>
+      </div>
+      <div class="info-card">
+        <div class="label">Комментариев всего</div>
+        <div class="value">${commentActivity.comments_total ?? 0}</div>
+        <div class="hint">${commentActivity.comments_7d ?? 0} за последние 7 дней</div>
+      </div>
+      <div class="info-card">
+        <div class="label">Активные агенты</div>
+        <div class="value">${agentActivity.active_agents ?? 0}</div>
+        <div class="hint">Назначены на открытые заявки</div>
+      </div>
+    </div>
+  `;
+}
+
+function renderDashboardCharts(data) {
+  const commentActivity = data.commentActivity || {};
+  const topClients = data.byClient || [];
+  const topAgents = data.byAgent || [];
+  const topCategories = data.byCategory || [];
+  const overdueClients = data.overdueByClient || [];
+
+  return `
+    <div class="charts-grid">
+      <div class="card">
+        <div class="card-header"><span class="card-title">Заявки за 14 дней</span></div>
+        <canvas id="chartDays" height="90"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">По приоритету</span></div>
+        <canvas id="chartPrio" height="160"></canvas>
+      </div>
+    </div>
+
+    <div class="charts-grid">
+      <div class="card">
+        <div class="card-header"><span class="card-title">По статусу</span></div>
+        <canvas id="chartStatus" height="160"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Топ клиентов</span></div>
+        <canvas id="chartClients" height="160"></canvas>
+      </div>
+    </div>
+
+    <div class="charts-grid">
+      <div class="card">
+        <div class="card-header"><span class="card-title">Нагрузка по агентам</span></div>
+        <canvas id="chartAgents" height="180"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">По категориям</span></div>
+        <canvas id="chartCategories" height="180"></canvas>
+      </div>
+    </div>
+
+    <div class="charts-grid">
+      <div class="card">
+        <div class="card-header"><span class="card-title">SLA-нарушения по клиентам</span></div>
+        <canvas id="chartOverdue" height="180"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Комментарная активность</span>
+        </div>
+        <div class="info-grid" style="margin-bottom:0">
+          <div class="info-card">
+            <div class="label">Внутренние комментарии</div>
+            <div class="value">${commentActivity.internal_comments ?? 0}</div>
+            <div class="hint">Для служебной коммуникации</div>
+          </div>
+          <div class="info-card">
+            <div class="label">Публичные комментарии</div>
+            <div class="value">${commentActivity.public_comments ?? 0}</div>
+            <div class="hint">Видны клиенту</div>
+          </div>
+        </div>
+        <div style="margin-top:12px">
+          <div class="card-subtitle" style="margin-bottom:8px">Топ клиентов с просрочкой</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Клиент</th><th>Просрочек</th></tr></thead>
+              <tbody>
+                ${overdueClients.length
+                  ? overdueClients.map(row => `<tr><td>${row.label}</td><td>${row.value}</td></tr>`).join('')
+                  : `<tr><td colspan="2"><div class="empty" style="padding:18px 0">Просрочек нет</div></td></tr>`}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function renderDashboard() {
+  document.getElementById('page').innerHTML = '<p style="padding:20px;color:#9ca3af">Загрузка...</p>';
+  const s = await get('/stats');
+  destroyCharts();
+
+  const totals = s.totals || {};
+  document.getElementById('page').innerHTML = `
+    ${renderMetricCards(totals)}
+    ${renderInfoCards(s.activity || {}, s.commentActivity || {}, s.agentActivity || {})}
+    ${renderDashboardCharts(s)}
+  `;
+
+  const prioColors = {critical:'#ef4444', high:'#f97316', medium:'#f59e0b', low:'#22c55e'};
+  const colors = ['#3b6ef5','#f59e0b','#10b981','#ef4444','#8b5cf6','#14b8a6','#f97316','#22c55e'];
+
+  const byDayLabels = (s.byDay || []).map(row => row.label ? row.label.slice(5) : '');
+  const byDayValues = (s.byDay || []).map(row => row.value);
+
+  charts.days = new Chart(document.getElementById('chartDays'), {
+    type:'line',
+    data:{labels:byDayLabels,datasets:[{data:byDayValues,borderColor:'#3b6ef5',backgroundColor:'rgba(59,110,245,.1)',fill:true,tension:.3,pointRadius:3}]},
+    options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{precision:0}}}}
+  });
+
+  charts.prio = new Chart(document.getElementById('chartPrio'), {
+    type:'doughnut',
+    data:{labels:(s.byPriority || []).map(row => PRIORITY_RU[row.label] || row.label),datasets:[{data:(s.byPriority || []).map(row => row.value),backgroundColor:(s.byPriority || []).map(row => prioColors[row.label] || '#ccc')}]},
+    options:{plugins:{legend:{position:'bottom'}},cutout:'60%'}
+  });
+
+  charts.status = new Chart(document.getElementById('chartStatus'), {
+    type:'pie',
+    data:{labels:(s.byStatus || []).map(row => STATUS_RU[row.label] || row.label),datasets:[{data:(s.byStatus || []).map(row => row.value),backgroundColor:colors}]},
+    options:{plugins:{legend:{position:'bottom'}}}
+  });
+
+  charts.clients = new Chart(document.getElementById('chartClients'), {
+    type:'bar',
+    data:{labels:(s.byClient || []).map(row => row.label),datasets:[{data:(s.byClient || []).map(row => row.value),backgroundColor:'#3b6ef5',borderRadius:5}]},
+    options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{precision:0}}}}
+  });
+
+  charts.agents = new Chart(document.getElementById('chartAgents'), {
+    type:'bar',
+    data:{labels:(s.byAgent || []).map(row => row.label),datasets:[{data:(s.byAgent || []).map(row => row.value),backgroundColor:'#8b5cf6',borderRadius:5}]},
+    options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,ticks:{precision:0}}}}
+  });
+
+  charts.categories = new Chart(document.getElementById('chartCategories'), {
+    type:'bar',
+    data:{labels:(s.byCategory || []).map(row => row.label),datasets:[{data:(s.byCategory || []).map(row => row.value),backgroundColor:'#10b981',borderRadius:5}]},
+    options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,ticks:{precision:0}}}}
+  });
+
+  charts.overdue = new Chart(document.getElementById('chartOverdue'), {
+    type:'bar',
+    data:{labels:(s.overdueByClient || []).map(row => row.label),datasets:[{data:(s.overdueByClient || []).map(row => row.value),backgroundColor:'#ef4444',borderRadius:5}]},
+    options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,ticks:{precision:0}}}}
+  });
+}
+
+async function renderAdmin() {
+  document.getElementById('page').innerHTML = '<p style="padding:20px;color:#9ca3af">Загрузка...</p>';
+  destroyCharts();
+
+  const { stats, tickets, clients, users } = await loadAdminData(true);
+  const totals = stats.totals || {};
+  const activity = stats.activity || {};
+  const commentActivity = stats.commentActivity || {};
+  const agentActivity = stats.agentActivity || {};
+
+  const reportRows = [
+    { name: 'Сводный отчет', formats: 'JSON, CSV, Markdown, PDF, Excel', count: '1 файл' },
+    { name: 'Заявки', formats: 'CSV, Excel', count: `${tickets.length} строк` },
+    { name: 'Клиенты', formats: 'CSV, Excel', count: `${clients.length} строк` },
+    { name: 'Агенты', formats: 'CSV, Excel', count: `${users.length} строк` }
+  ];
+
+  document.getElementById('page').innerHTML = `
+    ${renderMetricCards(totals)}
+    ${renderInfoCards(activity, commentActivity, agentActivity)}
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Выгрузка отчетности</div>
+          <div class="card-subtitle">Экспорт в JSON, CSV, Markdown, PDF и Excel формируется прямо в браузере</div>
+        </div>
+      </div>
+      <div class="export-actions">
+        <button class="btn btn-primary" onclick="exportAdminReport('summary-json')">Сводка JSON</button>
+        <button class="btn btn-secondary" onclick="exportAdminReport('summary-csv')">Сводка CSV</button>
+        <button class="btn btn-secondary" onclick="exportAdminReport('summary-md')">Сводка Markdown</button>
+        <button class="btn btn-secondary" onclick="exportAdminReport('summary-pdf')">Сводка PDF</button>
+        <button class="btn btn-secondary" onclick="exportAdminReport('summary-xlsx')">Сводка Excel</button>
+        <button class="btn btn-secondary" onclick="exportAdminReport('tickets-csv')">Заявки CSV</button>
+        <button class="btn btn-secondary" onclick="exportAdminReport('tickets-xlsx')">Заявки Excel</button>
+        <button class="btn btn-secondary" onclick="exportAdminReport('clients-csv')">Клиенты CSV</button>
+        <button class="btn btn-secondary" onclick="exportAdminReport('clients-xlsx')">Клиенты Excel</button>
+        <button class="btn btn-secondary" onclick="exportAdminReport('users-csv')">Агенты CSV</button>
+        <button class="btn btn-secondary" onclick="exportAdminReport('users-xlsx')">Агенты Excel</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Доступные отчеты</div>
+          <div class="card-subtitle">Краткий список наборов данных и форматов выгрузки</div>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Отчет</th><th>Форматы</th><th>Содержимое</th></tr></thead>
+          <tbody>
+            ${reportRows.map(row => `<tr><td style="font-weight:500">${row.name}</td><td>${row.formats}</td><td>${row.count}</td></tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+async function exportAdminReport(kind) {
+  const { stats, tickets, clients, users } = await loadAdminData(true);
+  const totals = stats.totals || {};
+  const activity = stats.activity || {};
+  const commentActivity = stats.commentActivity || {};
+  const agentActivity = stats.agentActivity || {};
+  const stamp = fileStamp();
+
+  if (kind === 'summary-json') {
+    const payload = {
+      generated_at: new Date().toISOString(),
+      stats,
+      tickets,
+      clients,
+      users
+    };
+    downloadTextFile(`otchet-svodka-${stamp}.json`, JSON.stringify(payload, null, 2), 'application/json;charset=utf-8');
+    toast('Сводка JSON выгружена');
+    return;
+  }
+
+  if (kind === 'summary-csv') {
+    const rows = [
+      ...Object.entries(totals).map(([metric, value]) => ({ section: 'totals', metric, value })),
+      ...Object.entries(activity).map(([metric, value]) => ({ section: 'activity', metric, value })),
+      ...Object.entries(commentActivity).map(([metric, value]) => ({ section: 'comments', metric, value })),
+      ...Object.entries(agentActivity).map(([metric, value]) => ({ section: 'agents', metric, value }))
+    ];
+    const csv = objectsToCsv(rows, [
+      { key: 'section', label: 'Раздел' },
+      { key: 'metric', label: 'Показатель' },
+      { key: 'value', label: 'Значение' }
+    ]);
+    downloadTextFile(`otchet-svodka-${stamp}.csv`, csv, 'text/csv;charset=utf-8');
+    toast('Сводка CSV выгружена');
+    return;
+  }
+
+  if (kind === 'summary-md') {
+    const lines = [
+      '# Сводка отчетности',
+      '',
+      `Сформировано: ${formatDateTime(new Date())}`,
+      '',
+      '## Основные показатели',
+      `- Всего заявок: ${totals.total ?? 0}`,
+      `- Открытые: ${totals.open_count ?? 0}`,
+      `- Новые: ${totals.new_count ?? 0}`,
+      `- В работе: ${totals.in_progress_count ?? 0}`,
+      `- Ожидание: ${totals.waiting_count ?? 0}`,
+      `- Решены / закрыты: ${totals.done_count ?? 0}`,
+      `- Критические открытые: ${totals.critical_open ?? 0}`,
+      `- Нарушений SLA: ${totals.slaBreached ?? stats.slaBreached ?? 0}`,
+      `- Среднее время решения (ч): ${totals.avg_resolution_h ?? '—'}`,
+      `- Средний возраст открытых (ч): ${totals.avg_open_age_h ?? '—'}`,
+      '',
+      '## Топ клиентов',
+      ...(stats.byClient || []).map(row => `- ${row.label}: ${row.value}`),
+      '',
+      '## Топ категорий',
+      ...(stats.byCategory || []).map(row => `- ${row.label}: ${row.value}`)
+    ];
+    downloadTextFile(`otchet-svodka-${stamp}.md`, lines.join('\n'), 'text/markdown;charset=utf-8');
+    toast('Сводка Markdown выгружена');
+    return;
+  }
+
+  if (kind === 'summary-pdf') {
+    await exportSummaryPdf(stats, tickets, clients, users, stamp);
+    return;
+  }
+
+  if (kind === 'summary-xlsx') {
+    const workbook = buildSummaryWorkbook(stats, tickets, clients, users);
+    XLSX.writeFile(workbook, `otchet-svodka-${stamp}.xlsx`);
+    toast('Сводка Excel выгружена');
+    return;
+  }
+
+  if (kind === 'tickets-csv') {
+    const csv = objectsToCsv(tickets, [
+      { key: 'id', label: 'ID' },
+      { key: 'title', label: 'Тема' },
+      { key: 'status', label: 'Статус', value: row => STATUS_RU[row.status] || row.status },
+      { key: 'priority', label: 'Приоритет', value: row => PRIORITY_RU[row.priority] || row.priority },
+      { key: 'category', label: 'Категория', value: row => row.category || 'Без категории' },
+      { key: 'client_name', label: 'Клиент', value: row => row.client_name || '—' },
+      { key: 'agent_name', label: 'Агент', value: row => row.agent_name || '—' },
+      { key: 'age_hours', label: 'Возраст (ч)' },
+      { key: 'sla_hours', label: 'SLA (ч)' },
+      { key: 'sla_breached', label: 'SLA нарушен' },
+      { key: 'created_at', label: 'Создано', value: row => formatDateTime(row.created_at) }
+    ]);
+    downloadTextFile(`otchet-zayavki-${stamp}.csv`, csv, 'text/csv;charset=utf-8');
+    toast('Заявки CSV выгружены');
+    return;
+  }
+
+  if (kind === 'tickets-xlsx') {
+    const workbook = XLSX.utils.book_new();
+    const sheet = XLSX.utils.json_to_sheet(tickets.map(ticket => ({
+      ID: ticket.id,
+      Тема: ticket.title,
+      Статус: STATUS_RU[ticket.status] || ticket.status,
+      Приоритет: PRIORITY_RU[ticket.priority] || ticket.priority,
+      Категория: ticket.category || 'Без категории',
+      Клиент: ticket.client_name || '—',
+      Агент: ticket.agent_name || '—',
+      'Возраст (ч)': ticket.age_hours,
+      'SLA (ч)': ticket.sla_hours,
+      'SLA нарушен': Number(ticket.sla_breached) === 1 ? 'Да' : 'Нет',
+      'Создано': formatDateTime(ticket.created_at)
+    })));
+    XLSX.utils.book_append_sheet(workbook, sheet, safeSheetName('Заявки'));
+    XLSX.writeFile(workbook, `otchet-zayavki-${stamp}.xlsx`);
+    toast('Заявки Excel выгружены');
+    return;
+  }
+
+  if (kind === 'clients-csv') {
+    const csv = objectsToCsv(clients, [
+      { key: 'name', label: 'Название' },
+      { key: 'email', label: 'Email' },
+      { key: 'phone', label: 'Телефон' },
+      { key: 'company_type', label: 'Тип' },
+      { key: 'sla_hours', label: 'SLA (ч)' },
+      { key: 'ticket_count', label: 'Заявок' }
+    ]);
+    downloadTextFile(`otchet-klienty-${stamp}.csv`, csv, 'text/csv;charset=utf-8');
+    toast('Клиенты CSV выгружены');
+    return;
+  }
+
+  if (kind === 'clients-xlsx') {
+    const workbook = XLSX.utils.book_new();
+    const sheet = XLSX.utils.json_to_sheet(clients.map(client => ({
+      Название: client.name,
+      Email: client.email || '—',
+      Телефон: client.phone || '—',
+      Тип: TYPE_RU[client.company_type] || client.company_type,
+      'SLA (ч)': client.sla_hours,
+      'Заявок': client.ticket_count
+    })));
+    XLSX.utils.book_append_sheet(workbook, sheet, safeSheetName('Клиенты'));
+    XLSX.writeFile(workbook, `otchet-klienty-${stamp}.xlsx`);
+    toast('Клиенты Excel выгружены');
+    return;
+  }
+
+  if (kind === 'users-csv') {
+    const csv = objectsToCsv(users, [
+      { key: 'name', label: 'Имя' },
+      { key: 'email', label: 'Email' },
+      { key: 'role', label: 'Роль', value: row => ROLE_RU[row.role] || row.role },
+      { key: 'active_tickets', label: 'Активных заявок' }
+    ]);
+    downloadTextFile(`otchet-agenty-${stamp}.csv`, csv, 'text/csv;charset=utf-8');
+    toast('Агенты CSV выгружены');
+    return;
+  }
+
+  if (kind === 'users-xlsx') {
+    const workbook = XLSX.utils.book_new();
+    const sheet = XLSX.utils.json_to_sheet(users.map(user => ({
+      Имя: user.name,
+      Email: user.email,
+      Роль: ROLE_RU[user.role] || user.role,
+      'Активных заявок': user.active_tickets
+    })));
+    XLSX.utils.book_append_sheet(workbook, sheet, safeSheetName('Агенты'));
+    XLSX.writeFile(workbook, `otchet-agenty-${stamp}.xlsx`);
+    toast('Агенты Excel выгружены');
+    return;
+  }
+
+  toast('Неизвестный формат выгрузки', false);
+}
+
+async function renderTickets(filters={}) {
+  const params = new URLSearchParams(filters).toString();
+  const [tickets, clients, users, meta] = await Promise.all([
+    get('/tickets' + (params ? '?' + params : '')),
+    get('/clients'),
+    get('/users'),
+    get('/tickets/meta')
+  ]);
+
+  allClients = clients;
+  allUsers = users;
+  ticketMeta = meta || {categories:[]};
+
+  const openTickets = tickets.filter(ticket => !['resolved','closed'].includes(ticket.status));
+  const breachedTickets = tickets.filter(ticket => Number(ticket.sla_breached) === 1);
+  const criticalOpen = tickets.filter(ticket => ticket.priority === 'critical' && !['resolved','closed'].includes(ticket.status));
+
+  const clientOpts = clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  const categoryOpts = (ticketMeta.categories || []).map(category => `<option value="${category}">${category}</option>`).join('');
+
+  const rows = tickets.length
+    ? tickets.map(ticket => `
+      <tr onclick="openTicket(${ticket.id})">
+        <td style="color:#6b7280;font-size:12px">#${ticket.id}</td>
+        <td style="max-width:280px"><div style="font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${ticket.title}</div><div style="font-size:11px;color:#9ca3af">${ticket.category || 'Без категории'}</div></td>
+        <td>${statusBadge(ticket.status)}</td>
+        <td>${priorityBadge(ticket.priority)}</td>
+        <td style="font-size:13px">${ticket.client_name || '—'}</td>
+        <td style="font-size:13px">${ticket.agent_name || '<span style="color:#9ca3af">Не назначен</span>'}</td>
+        <td>${slaLabel(ticket.age_hours, ticket.sla_hours || 24, ticket.status)}</td>
+        <td style="color:#9ca3af;font-size:12px">${timeAgo(ticket.created_at)}</td>
+      </tr>`).join('')
+    : '<tr><td colspan="8"><div class="empty"><div class="ico">📭</div>Заявки не найдены</div></td></tr>';
+
+  document.getElementById('page').innerHTML = `
+    <div class="ticket-summary">
+      <div class="summary-text">Показано <strong>${tickets.length}</strong> заявок, из них <strong>${openTickets.length}</strong> открытых и <strong>${breachedTickets.length}</strong> с нарушением SLA.</div>
+      <div class="summary-pills">
+        <span class="summary-pill">Критические открытые: <strong>${criticalOpen.length}</strong></span>
+        <span class="summary-pill">Клиентов: <strong>${clients.length}</strong></span>
+        <span class="summary-pill">Агентов: <strong>${users.length}</strong></span>
+      </div>
+    </div>
+    <div class="filters">
+      <input type="text" placeholder="🔍 Поиск..." id="q" onkeyup="applyFilters()" value="${filters.search || ''}">
+      <select onchange="applyFilters()" id="fStatus">
+        <option value="">Все статусы</option>
+        ${Object.entries(STATUS_RU).map(([key, value]) => `<option value="${key}" ${filters.status === key ? 'selected' : ''}>${value}</option>`).join('')}
+      </select>
+      <select onchange="applyFilters()" id="fPriority">
+        <option value="">Все приоритеты</option>
+        ${Object.entries(PRIORITY_RU).map(([key, value]) => `<option value="${key}" ${filters.priority === key ? 'selected' : ''}>${value}</option>`).join('')}
+      </select>
+      <select onchange="applyFilters()" id="fCategory">
+        <option value="">Все категории</option>
+        ${categoryOpts}
+      </select>
+      <select onchange="applyFilters()" id="fSla">
+        <option value="">Все SLA</option>
+        <option value="ok" ${filters.sla === 'ok' ? 'selected' : ''}>В норме</option>
+        <option value="breached" ${filters.sla === 'breached' ? 'selected' : ''}>Нарушено</option>
+      </select>
+      <select onchange="applyFilters()" id="fClient">
+        <option value="">Все клиенты</option>
+        ${clientOpts}
+      </select>
+      <button class="btn btn-secondary btn-sm" onclick="resetTicketFilters()">Сбросить</button>
+    </div>
+    <div class="card" style="padding:0">
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>#</th><th>Тема</th><th>Статус</th><th>Приоритет</th>
+            <th>Клиент</th><th>Агент</th><th>SLA</th><th>Дата</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+function applyFilters() {
+  renderTickets({
+    search: document.getElementById('q').value,
+    status: document.getElementById('fStatus').value,
+    priority: document.getElementById('fPriority').value,
+    category: document.getElementById('fCategory').value,
+    sla: document.getElementById('fSla').value,
+    client_id: document.getElementById('fClient').value
+  });
+}
+
+function resetTicketFilters() {
+  renderTickets();
+}
+
+async function openTicket(id) {
+  const [ticket, clients, users] = await Promise.all([
+    get('/tickets/' + id),
+    get('/clients'),
+    get('/users')
+  ]);
+
+  allClients = clients;
+  allUsers = users;
+
+  const clientOpts = clients.map(c => `<option value="${c.id}" ${ticket.client_id == c.id ? 'selected' : ''}>${c.name}</option>`).join('');
+  const userOpts = '<option value="">Не назначен</option>' + users.map(u => `<option value="${u.id}" ${ticket.assigned_to == u.id ? 'selected' : ''}>${u.name}</option>`).join('');
+  const statusOpts = Object.entries(STATUS_RU).map(([key, value]) => `<option value="${key}" ${ticket.status === key ? 'selected' : ''}>${value}</option>`).join('');
+  const prioOpts = Object.entries(PRIORITY_RU).map(([key, value]) => `<option value="${key}" ${ticket.priority === key ? 'selected' : ''}>${value}</option>`).join('');
+  const comments = ticket.comments.map(comment => `
+    <div class="comment ${comment.is_internal ? 'internal' : ''}">
+      <div class="comment-meta">${comment.author_name} · ${timeAgo(comment.created_at)} ${comment.is_internal ? '· <em>внутренняя</em>' : ''}</div>
+      <div class="comment-body">${comment.body}</div>
+    </div>`).join('') || '<div style="color:#9ca3af;font-size:13px">Комментариев пока нет</div>';
+
+  showModal(`Заявка #${ticket.id}`, `
+    <div class="ticket-detail">
+      <div>
+        <div class="form-group">
+          <label>Тема</label>
+          <input id="dt-title" value="${ticket.title}">
+        </div>
+        <div class="form-group">
+          <label>Описание</label>
+          <textarea id="dt-desc" rows="4">${ticket.description || ''}</textarea>
+        </div>
+        <div class="comments">
+          <div class="card-title" style="margin-bottom:10px">Комментарии</div>
+          <div id="comments-list">${comments}</div>
+          <div class="comment-add">
+            <textarea id="new-comment" placeholder="Написать комментарий..."></textarea>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <button class="btn btn-primary btn-sm" onclick="addComment(${ticket.id})">Отправить</button>
+              <label style="font-size:12px;display:flex;align-items:center;gap:4px;color:#6b7280;cursor:pointer">
+                <input type="checkbox" id="is-internal"> Внутренняя заметка
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="detail-meta">
+        <div class="form-group"><label>Статус</label><select id="dt-status">${statusOpts}</select></div>
+        <div class="form-group"><label>Приоритет</label><select id="dt-prio">${prioOpts}</select></div>
+        <div class="form-group"><label>Клиент</label><select id="dt-client">${clientOpts}</select></div>
+        <div class="form-group"><label>Агент</label><select id="dt-agent">${userOpts}</select></div>
+        <div class="form-group"><label>Категория</label><input id="dt-cat" value="${ticket.category || ''}"></div>
+        <div class="meta-row"><span class="meta-key">Создано</span><span>${new Date(ticket.created_at).toLocaleString('ru')}</span></div>
+        <div class="meta-row"><span class="meta-key">Обновлено</span><span>${new Date(ticket.updated_at).toLocaleString('ru')}</span></div>
+        <div class="meta-row"><span class="meta-key">SLA</span><span>${slaLabel(Math.floor((Date.now() - new Date(ticket.created_at)) / 3600000), ticket.sla_hours || 24, ticket.status)}</span></div>
+        <button class="btn btn-primary" onclick="saveTicket(${ticket.id})">💾 Сохранить</button>
+        <button class="btn btn-danger" onclick="deleteTicket(${ticket.id})">🗑 Удалить</button>
+      </div>
+    </div>`, null, true);
+}
+
+async function saveTicket(id) {
+  await put('/tickets/' + id, {
+    title: document.getElementById('dt-title').value,
+    description: document.getElementById('dt-desc').value,
+    status: document.getElementById('dt-status').value,
+    priority: document.getElementById('dt-prio').value,
+    category: document.getElementById('dt-cat').value,
+    assigned_to: document.getElementById('dt-agent').value
+  });
+  toast('Заявка сохранена');
+  closeModal();
+  refreshCurrentPage();
+}
+
+async function deleteTicket(id) {
+  if (!confirm('Удалить заявку #' + id + '?')) return;
+  await del('/tickets/' + id);
+  toast('Заявка удалена');
+  closeModal();
+  refreshCurrentPage();
+}
+
+async function addComment(id) {
+  const body = document.getElementById('new-comment').value.trim();
+  if (!body) return;
+  const is_internal = document.getElementById('is-internal').checked;
+  await post('/tickets/' + id + '/comments', {author_name:'Агент', body, is_internal});
+  toast('Комментарий добавлен');
+  openTicket(id);
+}
+
+async function openCreateTicket() {
+  if (!allClients.length) {
+    allClients = await get('/clients');
+    allUsers = await get('/users');
+    ticketMeta = await get('/tickets/meta');
+  }
+
+  const clientOpts = allClients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  const userOpts = '<option value="">Не назначен</option>' + allUsers.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
+  const categoryList = (ticketMeta.categories || []).map(category => `<option value="${category}"></option>`).join('');
+
+  showModal('Новая заявка', `
+    <div class="form-group"><label>Тема *</label><input id="nt" placeholder="Кратко опишите проблему"></div>
+    <div class="form-group"><label>Описание</label><textarea id="nd" rows="3" placeholder="Подробное описание..."></textarea></div>
+    <div class="form-row">
+      <div class="form-group"><label>Приоритет</label>
+        <select id="np">
+          <option value="medium">Средний</option>
+          <option value="high">Высокий</option>
+          <option value="critical">Критический</option>
+          <option value="low">Низкий</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Категория</label><input id="ncat" list="ticket-category-list" placeholder="Например: Доступ"></div>
+      <datalist id="ticket-category-list">${categoryList}</datalist>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Клиент</label><select id="nc"><option value="">Выберите клиента</option>${clientOpts}</select></div>
+      <div class="form-group"><label>Агент</label><select id="na">${userOpts}</select></div>
+    </div>`,
+    async () => {
+      const title = document.getElementById('nt').value.trim();
+      if (!title) { toast('Введите тему заявки', false); return; }
+      await post('/tickets', {
+        title,
+        description: document.getElementById('nd').value,
+        priority: document.getElementById('np').value,
+        category: document.getElementById('ncat').value,
+        client_id: document.getElementById('nc').value,
+        assigned_to: document.getElementById('na').value
+      });
+      toast('Заявка создана');
+      closeModal();
+      refreshCurrentPage();
+    }
+  );
+}
+
+async function renderClients() {
+  const clients = await get('/clients');
+  const rows = clients.map(c => `
+    <tr>
+      <td style="font-weight:500">${c.name}</td>
+      <td style="font-size:12px;color:#6b7280">${c.email || '—'}</td>
+      <td style="font-size:12px;color:#6b7280">${c.phone || '—'}</td>
+      <td><span class="badge badge-${c.company_type === 'enterprise' ? 'critical' : c.company_type === 'smb' ? 'in_progress' : 'closed'}">${TYPE_RU[c.company_type]}</span></td>
+      <td style="font-size:13px">${c.sla_hours}ч</td>
+      <td style="font-size:13px">${c.ticket_count}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteClient(${c.id})">Удалить</button></td>
+    </tr>`).join('');
+
+  document.getElementById('page').innerHTML = `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
+      <button class="btn btn-primary" onclick="openCreateClient()">+ Новый клиент</button>
+    </div>
+    <div class="card" style="padding:0">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Название</th><th>Email</th><th>Телефон</th><th>Тип</th><th>SLA</th><th>Заявок</th><th></th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="7"><div class="empty">Клиентов пока нет</div></td></tr>'}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+async function openCreateClient() {
+  showModal('Новый клиент', `
+    <div class="form-row">
+      <div class="form-group"><label>Название компании *</label><input id="cn" placeholder="ООО 'Название'"></div>
+      <div class="form-group"><label>Тип</label>
+        <select id="ctype">
+          <option value="smb">СМБ</option>
+          <option value="enterprise">Корпоративный</option>
+          <option value="starter">Стартовый</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Электронная почта</label><input id="ce" type="email" placeholder="pochta@kompaniya.ru"></div>
+      <div class="form-group"><label>Телефон</label><input id="cp" placeholder="+7..."></div>
+    </div>
+    <div class="form-group"><label>SLA (часов)</label><input id="csla" type="number" value="24" min="1"></div>`,
+    async () => {
+      const name = document.getElementById('cn').value.trim();
+      if (!name) { toast('Введите название', false); return; }
+      await post('/clients', {
+        name,
+        email: document.getElementById('ce').value,
+        phone: document.getElementById('cp').value,
+        company_type: document.getElementById('ctype').value,
+        sla_hours: +document.getElementById('csla').value
+      });
+      toast('Клиент добавлен');
+      closeModal();
+      renderClients();
+    }
+  );
+}
+
+async function deleteClient(id) {
+  if (!confirm('Удалить клиента?')) return;
+  await del('/clients/' + id);
+  toast('Удалено');
+  renderClients();
+}
+
+async function renderAgents() {
+  const users = await get('/users');
+  const rows = users.map(u => `
+    <tr>
+      <td style="font-weight:500">${u.name}</td>
+      <td style="font-size:12px;color:#6b7280">${u.email}</td>
+      <td><span class="badge badge-${u.role === 'admin' ? 'critical' : u.role === 'manager' ? 'in_progress' : 'new'}">${ROLE_RU[u.role]}</span></td>
+      <td style="font-size:13px">${u.active_tickets}</td>
+    </tr>`).join('');
+
+  document.getElementById('page').innerHTML = `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
+      <button class="btn btn-primary" onclick="openCreateAgent()">+ Новый агент</button>
+    </div>
+    <div class="card" style="padding:0">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Имя</th><th>Email</th><th>Роль</th><th>Активных заявок</th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="4"><div class="empty">Агентов пока нет</div></td></tr>'}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+async function openCreateAgent() {
+  showModal('Новый агент', `
+    <div class="form-row">
+      <div class="form-group"><label>Имя *</label><input id="an" placeholder="Имя Фамилия"></div>
+      <div class="form-group"><label>Роль</label>
+        <select id="ar">
+          <option value="agent">Агент</option>
+          <option value="manager">Менеджер</option>
+          <option value="admin">Админ</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group"><label>Электронная почта *</label><input id="ae" type="email" placeholder="imya@kompaniya.ru"></div>`,
+    async () => {
+      const name = document.getElementById('an').value.trim();
+      const email = document.getElementById('ae').value.trim();
+      if (!name || !email) { toast('Заполните все поля', false); return; }
+      await post('/users', {name, email, role: document.getElementById('ar').value});
+      toast('Агент добавлен');
+      closeModal();
+      renderAgents();
+    }
+  );
+}
+
+function showModal(title, body, onSave=null, wide=false) {
+  const existing = document.getElementById('modal-bg');
+  if (existing) existing.remove();
+  const el = document.createElement('div');
+  el.className = 'modal-bg';
+  el.id = 'modal-bg';
+  el.onclick = e => { if (e.target === el) closeModal(); };
+  el.innerHTML = `
+    <div class="modal" style="max-width:${wide ? '780px' : '560px'}">
+      <div class="modal-header">
+        <h2>${title}</h2>
+        <button class="modal-close" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-body">${body}</div>
+      ${onSave ? `<div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal()">Отмена</button><button class="btn btn-primary" onclick="window.__modalSave()">Сохранить</button></div>` : ''}
+    </div>`;
+  document.body.appendChild(el);
+  if (onSave) window.__modalSave = onSave;
+}
+
+function closeModal() {
+  const el = document.getElementById('modal-bg');
+  if (el) el.remove();
+}
+
+renderDashboard();
+</script>
+</body>
+</html>
