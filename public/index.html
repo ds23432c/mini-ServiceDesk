@@ -1027,6 +1027,17 @@ async function renderTickets(filters={}) {
         </table>
       </div>
     </div>`;
+
+  if (Object.prototype.hasOwnProperty.call(filters, 'search')) {
+    window.setTimeout(() => {
+      const searchInput = document.getElementById('q');
+      if (searchInput) {
+        searchInput.focus();
+        const caret = searchInput.value.length;
+        searchInput.setSelectionRange(caret, caret);
+      }
+    }, 0);
+  }
 }
 
 function applyFilters() {
