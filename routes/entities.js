@@ -1,5 +1,6 @@
 const router = require('express').Router();
 const db = require('../db');
+const { requireAdmin } = require('../services/adminAuth');
 
 // Клиенты
 router.get('/clients', async (req, res) => {
@@ -11,7 +12,7 @@ router.get('/clients', async (req, res) => {
   res.json(rows);
 });
 
-router.post('/clients', async (req, res) => {
+router.post('/clients', requireAdmin, async (req, res) => {
   const { name, email, phone, company_type, sla_hours } = req.body;
   const [r] = await db.query(
     'INSERT INTO clients (name,email,phone,company_type,sla_hours) VALUES (?,?,?,?,?)',
@@ -19,7 +20,7 @@ router.post('/clients', async (req, res) => {
   res.json({ id: r.insertId });
 });
 
-router.delete('/clients/:id', async (req, res) => {
+router.delete('/clients/:id', requireAdmin, async (req, res) => {
   await db.query('DELETE FROM clients WHERE id = ?', [req.params.id]);
   res.json({ message: 'Удалено' });
 });
@@ -34,7 +35,7 @@ router.get('/users', async (req, res) => {
   res.json(rows);
 });
 
-router.post('/users', async (req, res) => {
+router.post('/users', requireAdmin, async (req, res) => {
   const { name, email, role } = req.body;
   const [r] = await db.query(
     'INSERT INTO users (name,email,role) VALUES (?,?,?)',

@@ -1,5 +1,6 @@
 const router = require('express').Router();
 const db = require('../db');
+const { requireAdmin } = require('../services/adminAuth');
 
 // Список всех заявок
 router.get('/', async (req, res) => {
@@ -66,7 +67,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Создать заявку
-router.post('/', async (req, res) => {
+router.post('/', requireAdmin, async (req, res) => {
   const { title, description, priority, category, client_id, assigned_to } = req.body;
   const [result] = await db.query(
     'INSERT INTO tickets (title, description, priority, category, client_id, assigned_to) VALUES (?,?,?,?,?,?)',
@@ -98,7 +99,7 @@ router.post('/:id/comments', async (req, res) => {
 });
 
 // Удалить заявку
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireAdmin, async (req, res) => {
   await db.query('DELETE FROM tickets WHERE id = ?', [req.params.id]);
   res.json({ message: 'Удалено' });
 });

@@ -182,6 +182,7 @@ td{padding:11px 14px;vertical-align:middle}
 <script>
 const API = '/api';
 let currentPage = 'dashboard';
+window.currentPage = currentPage;
 let allClients = [];
 let allUsers = [];
 let ticketMeta = { categories: [] };
@@ -195,6 +196,7 @@ const ROLE_RU = {admin:'Админ',manager:'Менеджер',agent:'Агент
 
 function nav(page, el) {
   currentPage = page;
+  window.currentPage = currentPage;
   document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
   if (el) el.classList.add('active');
   const titles = {dashboard:'Панель',tickets:'Заявки',clients:'Клиенты',agents:'Агенты',admin:'Администрирование'};
@@ -1325,5 +1327,6 @@ function closeModal() {
 
 renderDashboard();
 </script>
+<script src="/admin-ui.js"></script>
 </body>
 </html>
