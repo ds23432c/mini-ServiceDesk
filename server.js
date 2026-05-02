@@ -18,13 +18,10 @@ app.get('*', (req, res) =>
 const PORT = Number(process.env.PORT || 3000);
 
 function getServiceUrl(port) {
-  const host =
-    process.env.RAILWAY_PUBLIC_DOMAIN ||
-    process.env.RAILWAY_STATIC_URL ||
-    process.env.PUBLIC_URL;
+  const publicDomain = process.env.RAILWAY_PUBLIC_DOMAIN;
 
-  if (host) {
-    return host.startsWith('http') ? host : `https://${host}`;
+  if (publicDomain) {
+    return `https://${publicDomain}`;
   }
 
   return `http://localhost:${port}`;
