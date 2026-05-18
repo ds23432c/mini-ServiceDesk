@@ -409,9 +409,11 @@ function buildPdfReportNode(stats, tickets, clients, users) {
 
   const node = document.createElement('div');
   node.style.position = 'fixed';
-  node.style.left = '-10000px';
+  node.style.left = '0';
   node.style.top = '0';
+  node.style.zIndex = '2147483647';
   node.style.width = '800px';
+  node.style.maxWidth = '100vw';
   node.style.background = '#fff';
   node.style.color = '#1e2330';
   node.style.padding = '24px';
@@ -465,14 +467,40 @@ async function exportSummaryPdf(stats, tickets, clients, users, stamp) {
   document.body.appendChild(node);
 
   try {
-    await window.html2pdf().set({
+    await new Promise(resolve => requestAnimationFrame(() => resolve()));
+
+    const filename = `otchet-svodka-${stamp}.pdf`;
+    const pdfWorker = window.html2pdf().set({
       margin: 10,
-      filename: `otchet-svodka-${stamp}.pdf`,
+      filename,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2, useCORS: true },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'p' }
-    }).from(node).save();
-    toast('Сводка PDF выгружена');
+    }).from(node);
+
+    try {
+      const pdfBlob = await pdfWorker.outputPdf('blob');
+      const sizeKb = pdfBlob && pdfBlob.size ? (pdfBlob.size / 1024).toFixed(1) : 'unknown';
+
+      if (!pdfBlob || !pdfBlob.size || pdfBlob.size < 1024) {
+        toast(`Сводка PDF сгенерирована слишком маленькой (${sizeKb} KB)`, false);
+      } else {
+        const url = URL.createObjectURL(pdfBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+
+        toast(`Сводка PDF выгружена (${sizeKb} KB)`);
+      }
+    } catch (error) {
+      // fallback: старое поведение, если outputPdf('blob') недоступен
+      await pdfWorker.save();
+      toast('Сводка PDF выгружена');
+    }
   } finally {
     node.remove();
   }
